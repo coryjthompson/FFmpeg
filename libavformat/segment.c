@@ -212,6 +212,8 @@ static int set_segment_filename(AVFormatContext *s)
         return AVERROR(EINVAL);
     }
 
+    av_log(s, AV_LOG_INFO , "Using Segment filename: '%s'\n", oc->filename);
+
     /* copy modified name in list entry */
     size = strlen(av_basename(oc->filename)) + 1;
     if (seg->entry_prefix)
@@ -359,6 +361,12 @@ static int segment_end(AVFormatContext *s, int write_trailer, int is_last)
     if (ret < 0)
         av_log(s, AV_LOG_ERROR, "Failure occurred when ending segment '%s'\n",
                oc->filename);
+
+    ret = avio_printf(oc->pb, "!!!EOS!!!\n");
+
+    if (ret < 0)
+        av_log(s, AV_LOG_ERROR, "Failure to write EOS holder '%s'\n",
+                oc->filename);
 
     if (seg->list) {
         if (seg->list_size || seg->list_type == LIST_TYPE_M3U8) {

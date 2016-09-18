@@ -4260,6 +4260,13 @@ uint64_t ff_ntp_time(void)
 
 int av_get_frame_filename(char *buf, int buf_size, const char *path, int number)
 {
+    // override. Allows av_get_frame_filename to work with pipes
+    int ret = strncmp (path, "pipe:1", 6);
+    if(ret == 0) {
+        memcpy(buf, av_strdup(path), 6);
+        return 0;
+    }
+
     const char *p;
     char *q, buf1[20], c;
     int nd, len, percentd_found;
