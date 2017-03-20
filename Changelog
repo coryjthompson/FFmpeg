@@ -2,74 +2,74 @@ Entries are sorted chronologically from oldest to youngest within each release,
 releases are sorted from youngest to oldest.
 
 version <next>:
+- CrystalHD decoder moved to new decode API
+- add internal ebur128 library, remove external libebur128 dependency
+- Pro-MPEG CoP #3-R2 FEC protocol
+- premultiply video filter
+- Support for spherical videos
+- configure now fails if autodetect-libraries are requested but not found
+- PSD Decoder
+- 16.8 floating point pcm decoder
+- 24.0 floating point pcm decoder
+- Apple Pixlet decoder
+- QDMC audio decoder
+- NewTek SpeedHQ decoder
+- MIDI Sample Dump Standard demuxer
+- readeia608 filter
+- Sample Dump eXchange demuxer
+- abitscope multimedia filter
+- Scenarist Closed Captions demuxer and muxer
+- threshold filter
+- midequalizer filter
+- Optimal Huffman tables for (M)JPEG encoding
+- FM Screen Capture Codec decoder
+- native Opus encoder
+- ScreenPressor decoder
+- incomplete ClearVideo decoder
+- Intel QSV video scaling and deinterlacing filters
+- Support MOV with multiple sample description tables
+- XPM decoder
+- Removed the legacy X11 screen grabber, use XCB instead
 
 
-version 3.1.3:
-- examples/demuxing_decoding: convert to codecpar
-- avcodec/exr: Check tile positions
-- avcodec/aacenc: Tighter input checks
-- avformat/wtvdec: Check pointer before use
-- libavcodec/wmalosslessdec: Check the remaining bits
-- avcodec/adpcm: Fix adpcm_ima_wav padding
-- avcodec/svq3: fix slice size check
-- avcodec/diracdec: Check numx/y
-- avcodec/h2645_parse: fix nal size
-- avcodec/h2645_parse: Use get_nalsize() in ff_h2645_packet_split()
-- h2645_parse: only read avc length code at the correct position
-- h2645_parse: don't overread AnnexB NALs within an avc stream
-- avcodec/h264_parser: Factor get_avc_nalsize() out
-- avcodec/cfhd: Increase minimum band dimension to 3
-- avcodec/indeo2: check ctab
-- avformat/swfdec: Fix inflate() error code check
-- avcodec/rawdec: Fix bits_per_coded_sample checks
-- vcodec/h2645_parse: Clear buffer padding
-- avcodec/h2645: Fix NAL unit padding
-- avfilter/drawutils: Fix single plane with alpha
-- cmdutils: check for SetDllDirectory() availability
-
-version 3.1.2:
-- cmdutils: remove the current working directory from the DLL search path on win32
-- avcodec/rawdec: Fix palette handling with changing palettes
-- avcodec/raw: Fix decoding of ilacetest.mov
-- avformat/mov: Enable mp3 parsing if a packet needs it
-- avformat/hls: Use an array instead of stream offset for stream mapping
-- avformat/hls: Sync starting segment across variants on live streams
-- avformat/hls: Fix regression with ranged media segments
-- avcodec/ffv1enc: Fix assertion failure with non zero bits per sample
-- avfilter/af_hdcd: small fix in af_hdcd.c where gain was not being adjusted for "attenuate slowly"
-- avformat/oggdec: Fix integer overflow with invalid pts
-- ffplay: Fix invalid array index
-- avcodec/alacenc: allocate bigger packets (cherry picked from commit 82b84c71b009884c8d041361027718b19922c76d)
-- libavcodec/dnxhd: Enable 12-bit DNxHR support.
-- lavc/vaapi_encode_h26x: Fix a crash if "." is not the decimal separator.
-- jni: Return ENOSYS on unsupported platforms
-- lavu/hwcontext_vaapi: Fix compilation if VA_FOURCC_ABGR is not defined.
-- avcodec/vp9_parser: Check the input frame sizes for being consistent
-- avformat/flvdec: parse keyframe before a\v stream was created add_keyframes_index() when stream created or keyframe parsed
-- avformat/flvdec: splitting add_keyframes_index() out from parse_keyframes_index()
-- libavformat/rtpdec_asf: zero initialize the AVIOContext struct
-- libavutil/opt: Small bugfix in example.
-- libx264: Increase x264 opts character limit to 4096
-- avcodec/h264_parser: Set sps/pps_ref
-- librtmp: Avoid an infiniloop setting connection arguments
-- avformat/oggparsevp8: fix pts calculation on pages ending with an invisible frame
-- lavc/Makefile: Fix standalone compilation of the svq3 decoder.
-- lavf/vplayerdec: Improve auto-detection.
-- lavc/mediacodecdec_h264: properly convert extradata to annex-b
-- Revert "configure: Enable GCC vectorization on ≥4.9 on x86"
-
-version 3.1.1:
-- doc/APIchanges: document the lavu/lavf field moves
-- avformat/avformat: Move new field to the end of AVStream
-- avformat/utils: update deprecated AVStream->codec when the context is updated
-- avutil/frame: Move new field to the end of AVFrame
-- libavcodec/exr : fix decoding piz float file.
-- avformat/mov: Check sample size
-- lavfi: Move new field to the end of AVFilterContext
-- lavfi: Move new field to the end of AVFilterLink
-- ffplay: Fix usage of private lavfi API
-- lavc/mediacodecdec_h264: add missing NAL headers to SPS/PPS buffers
-- lavc/pnm_parser: disable parsing for text based PNMs
+version 3.2:
+- libopenmpt demuxer
+- tee protocol
+- Changed metadata print option to accept general urls
+- Alias muxer for Ogg Video (.ogv)
+- VP8 in Ogg muxing
+- curves filter doesn't automatically insert points at x=0 and x=1 anymore
+- 16-bit support in curves filter and selectivecolor filter
+- OpenH264 decoder wrapper
+- MediaCodec H.264/HEVC/MPEG-4/VP8/VP9 hwaccel
+- True Audio (TTA) muxer
+- crystalizer audio filter
+- acrusher audio filter
+- bitplanenoise video filter
+- floating point support in als decoder
+- fifo muxer
+- maskedclamp filter
+- hysteresis filter
+- lut2 filter
+- yuvtestsrc filter
+- CUDA CUVID H.263/VP8/VP9/10 bit HEVC (Dithered) Decoding
+- vaguedenoiser filter
+- added threads option per filter instance
+- weave filter
+- gblur filter
+- avgblur filter
+- sobel and prewitt filter
+- MediaCodec HEVC/MPEG-4/VP8/VP9 decoding
+- Meridian Lossless Packing (MLP) / TrueHD encoder
+- Non-Local Means (nlmeans) denoising filter
+- sdl2 output device and ffplay support
+- sdl1 output device and sdl1 support removed
+- extended mov edit list support
+- libfaac encoder removed
+- Matroska muxer now writes CRC32 elements by default in all Level 1 elements
+- sidedata video and asidedata audio filter
+- Changed mapping of rtp MIME type G726 to codec g726le.
+- spec compliant VAAPI/DXVA2 VC-1 decoding of slices in frame-coded images
 
 
 version 3.1:
@@ -117,6 +117,7 @@ version 3.1:
 - libutvideo wrapper removed
 - YUY2 Lossless Codec decoder
 - VideoToolbox H.264 encoder
+- VAAPI-accelerated MPEG-2 and VP8 encoding
 
 
 version 3.0:

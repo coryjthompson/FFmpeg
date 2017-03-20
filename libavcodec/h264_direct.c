@@ -27,7 +27,8 @@
 
 #include "internal.h"
 #include "avcodec.h"
-#include "h264.h"
+#include "h264dec.h"
+#include "h264_ps.h"
 #include "mpegutils.h"
 #include "rectangle.h"
 #include "thread.h"
@@ -38,12 +39,22 @@ static int get_scale_factor(H264SliceContext *sl,
                             int poc, int poc1, int i)
 {
     int poc0 = sl->ref_list[0][i].poc;
-    int td = av_clip_int8(poc1 - poc0);
+    int64_t pocdiff = poc1 - (int64_t)poc0;
+    int td = av_clip_int8(pocdiff);
+
+    if (pocdiff != (int)pocdiff)
+        avpriv_request_sample(sl->h264->avctx, "pocdiff overflow\n");
+
     if (td == 0 || sl->ref_list[0][i].parent->long_ref) {
         return 256;
     } else {
-        int tb = av_clip_int8(poc - poc0);
+        int64_t pocdiff0 = poc - (int64_t)poc0;
+        int tb = av_clip_int8(pocdiff0);
         int tx = (16384 + (FFABS(td) >> 1)) / td;
+
+        if (pocdiff0 != (int)pocdiff0)
+            av_log(sl->h264->avctx, AV_LOG_DEBUG, "pocdiff0 overflow\n");
+
         return av_clip_intp2((tb * tx + 32) >> 6, 10);
     }
 }
@@ -613,7 +624,7 @@ single_col:
 
                 {
                     const int16_t *mv_col = l1mv[x8 * 3 + y8 * b4_stride];
-                    int my_col            = (mv_col[1] << y_shift) / 2;
+                    int my_col            = (mv_col[1] * (1 << y_shift)) / 2;
                     int mx                = (scale * mv_col[0] + 128) >> 8;
                     int my                = (scale * my_col    + 128) >> 8;
                     fill_rectangle(&sl->mv_cache[0][scan8[i8 * 4]], 2, 2, 8,

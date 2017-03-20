@@ -46,14 +46,13 @@
 #include "internal.h"
 #include "avcodec.h"
 #include "mpegutils.h"
-#include "h264.h"
+#include "h264dec.h"
 #include "h264data.h"
 #include "golomb.h"
 #include "hpeldsp.h"
 #include "mathops.h"
 #include "rectangle.h"
 #include "tpeldsp.h"
-#include "vdpau_internal.h"
 
 #if CONFIG_ZLIB
 #include <zlib.h>
@@ -66,6 +65,20 @@
  * svq3 decoder.
  */
 
+typedef struct SVQ3Frame {
+    AVFrame *f;
+
+    AVBufferRef *motion_val_buf[2];
+    int16_t (*motion_val[2])[2];
+
+    AVBufferRef *mb_type_buf;
+    uint32_t *mb_type;
+
+
+    AVBufferRef *ref_index_buf[2];
+    int8_t *ref_index[2];
+} SVQ3Frame;
+
 typedef struct SVQ3Context {
     AVCodecContext *avctx;
 
@@ -75,9 +88,9 @@ typedef struct SVQ3Context {
     TpelDSPContext tdsp;
     VideoDSPContext vdsp;
 
-    H264Picture *cur_pic;
-    H264Picture *next_pic;
-    H264Picture *last_pic;
+    SVQ3Frame *cur_pic;
+    SVQ3Frame *next_pic;
+    SVQ3Frame *last_pic;
     GetBitContext gb;
     GetBitContext gb_slice;
     uint8_t *slice_buf;
@@ -102,6 +115,7 @@ typedef struct SVQ3Context {
     int prev_frame_num;
 
     enum AVPictureType pict_type;
+    enum AVPictureType slice_type;
     int low_delay;
 
     int mb_x, mb_y;
@@ -417,7 +431,7 @@ static inline void svq3_mc_dir_part(SVQ3Context *s,
                                     int mx, int my, int dxy,
                                     int thirdpel, int dir, int avg)
 {
-    const H264Picture *pic = (dir == 0) ? s->last_pic : s->next_pic;
+    const SVQ3Frame *pic = (dir == 0) ? s->last_pic : s->next_pic;
     uint8_t *src, *dest;
     int i, emu = 0;
     int blocksize = 2 - (width >> 3); // 16->0, 8->1, 4->2
@@ -613,11 +627,6 @@ static av_always_inline void hl_decode_mb_idct_luma(SVQ3Context *s,
                                 s->qscale, IS_INTRA(mb_type) ? 1 : 0);
             }
     }
-}
-
-static av_always_inline int dctcoef_get(int16_t *mb, int index)
-{
-    return AV_RN16A(mb + index);
 }
 
 static av_always_inline void hl_decode_mb_predict_luma(SVQ3Context *s,
@@ -1056,14 +1065,16 @@ static int svq3_decode_slice_header(AVCodecContext *avctx)
         av_log(s->avctx, AV_LOG_ERROR, "illegal slice type %u \n", slice_id);
         return -1;
     }
+    if (get_bits1(&s->gb_slice)) {
+        avpriv_report_missing_feature(s->avctx, "Media key encryption");
+        return AVERROR_PATCHWELCOME;
+    }
 
-    s->pict_type = ff_h264_golomb_to_pict_type[slice_id];
+    s->slice_type = ff_h264_golomb_to_pict_type[slice_id];
 
     if ((header & 0x9F) == 2) {
-        i = (s->mb_num < 64) ? 6 : (1 + av_log2(s->mb_num - 1));
+        i = (s->mb_num < 64) ? 5 : av_log2(s->mb_num - 1);
         get_bits(&s->gb_slice, i);
-    } else {
-        skip_bits1(&s->gb_slice);
     }
 
     s->slice_num      = get_bits(&s->gb_slice, 8);
@@ -1326,7 +1337,7 @@ fail:
     return ret;
 }
 
-static void free_picture(AVCodecContext *avctx, H264Picture *pic)
+static void free_picture(AVCodecContext *avctx, SVQ3Frame *pic)
 {
     int i;
     for (i = 0; i < 2; i++) {
@@ -1338,7 +1349,7 @@ static void free_picture(AVCodecContext *avctx, H264Picture *pic)
     av_frame_unref(pic->f);
 }
 
-static int get_buffer(AVCodecContext *avctx, H264Picture *pic)
+static int get_buffer(AVCodecContext *avctx, SVQ3Frame *pic)
 {
     SVQ3Context *s = avctx->priv_data;
     const int big_mb_num    = s->mb_stride * (s->mb_height + 1) + 1;
@@ -1367,10 +1378,10 @@ static int get_buffer(AVCodecContext *avctx, H264Picture *pic)
             pic->ref_index[i]  = pic->ref_index_buf[i]->data;
         }
     }
-    pic->reference = !(s->pict_type == AV_PICTURE_TYPE_B);
 
     ret = ff_get_buffer(avctx, pic->f,
-                        pic->reference ? AV_GET_BUFFER_FLAG_REF : 0);
+                        (s->pict_type != AV_PICTURE_TYPE_B) ?
+                         AV_GET_BUFFER_FLAG_REF : 0);
     if (ret < 0)
         goto fail;
 
@@ -1426,8 +1437,10 @@ static int svq3_decode_frame(AVCodecContext *avctx, void *data,
     if (svq3_decode_slice_header(avctx))
         return -1;
 
+    s->pict_type = s->slice_type;
+
     if (s->pict_type != AV_PICTURE_TYPE_B)
-        FFSWAP(H264Picture*, s->next_pic, s->last_pic);
+        FFSWAP(SVQ3Frame*, s->next_pic, s->last_pic);
 
     av_frame_unref(s->cur_pic->f);
 
@@ -1539,6 +1552,9 @@ static int svq3_decode_frame(AVCodecContext *avctx, void *data,
                     if (svq3_decode_slice_header(avctx))
                         return -1;
                 }
+                if (s->slice_type != s->pict_type) {
+                    avpriv_request_sample(avctx, "non constant slice type");
+                }
                 /* TODO: support s->mb_skip_run */
             }
 
@@ -1592,7 +1608,7 @@ static int svq3_decode_frame(AVCodecContext *avctx, void *data,
         *got_frame = 1;
 
     if (s->pict_type != AV_PICTURE_TYPE_B) {
-        FFSWAP(H264Picture*, s->cur_pic, s->next_pic);
+        FFSWAP(SVQ3Frame*, s->cur_pic, s->next_pic);
     } else {
         av_frame_unref(s->cur_pic->f);
     }

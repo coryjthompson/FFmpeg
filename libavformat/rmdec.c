@@ -207,6 +207,7 @@ static int rm_read_audio_stream_info(AVFormatContext *s, AVIOContext *pb,
             break;
         case AV_CODEC_ID_RA_288:
             st->codecpar->extradata_size= 0;
+            av_freep(&st->codecpar->extradata);
             ast->audio_framesize = st->codecpar->block_align;
             st->codecpar->block_align = coded_framesize;
             break;
@@ -235,6 +236,7 @@ static int rm_read_audio_stream_info(AVFormatContext *s, AVIOContext *pb,
                     return -1;
                 }
                 st->codecpar->block_align = ff_sipr_subpk_size[flavor];
+                st->need_parsing = AVSTREAM_PARSE_FULL_RAW;
             } else {
                 if(sub_packet_size <= 0){
                     av_log(s, AV_LOG_ERROR, "sub_packet_size is invalid\n");
@@ -933,6 +935,10 @@ ff_rm_parse_packet (AVFormatContext *s, AVIOContext *pb,
 
              ast->sub_packet_cnt = 0;
              rm->audio_stream_num = st->index;
+            if (st->codecpar->block_align <= 0) {
+                av_log(s, AV_LOG_ERROR, "Invalid block alignment %d\n", st->codecpar->block_align);
+                return AVERROR_INVALIDDATA;
+            }
              rm->audio_pkt_cnt = h * w / st->codecpar->block_align;
         } else if ((ast->deint_id == DEINT_ID_VBRF) ||
                    (ast->deint_id == DEINT_ID_VBRS)) {
@@ -957,19 +963,6 @@ ff_rm_parse_packet (AVFormatContext *s, AVIOContext *pb,
     }
 
     pkt->stream_index = st->index;
-
-#if 0
-    if (st->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
-        if(st->codecpar->codec_id == AV_CODEC_ID_RV20){
-            int seq= 128*(pkt->data[2]&0x7F) + (pkt->data[3]>>1);
-            av_log(s, AV_LOG_DEBUG, "%d %"PRId64" %d\n", *timestamp, *timestamp*512LL/25, seq);
-
-            seq |= (timestamp&~0x3FFF);
-            if(seq - timestamp >  0x2000) seq -= 0x4000;
-            if(seq - timestamp < -0x2000) seq += 0x4000;
-        }
-    }
-#endif
 
     pkt->pts = timestamp;
     if (flags & 2)
@@ -1043,7 +1036,9 @@ static int rm_read_packet(AVFormatContext *s, AVPacket *pkt)
                     st = s->streams[i];
             }
 
-            if (len <= 0 || avio_feof(s->pb))
+            if (avio_feof(s->pb))
+                return AVERROR_EOF;
+            if (len <= 0)
                 return AVERROR(EIO);
 
             res = ff_rm_parse_packet (s, s->pb, st, st->priv_data, len, pkt,

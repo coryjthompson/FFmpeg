@@ -80,11 +80,17 @@ static const struct {
     #if CONFIG_FMTCONVERT
         { "fmtconvert", checkasm_check_fmtconvert },
     #endif
+    #if CONFIG_H264DSP
+        { "h264dsp", checkasm_check_h264dsp },
+    #endif
     #if CONFIG_H264PRED
         { "h264pred", checkasm_check_h264pred },
     #endif
     #if CONFIG_H264QPEL
         { "h264qpel", checkasm_check_h264qpel },
+    #endif
+    #if CONFIG_HEVC_DECODER
+        { "hevc_idct", checkasm_check_hevc_idct },
     #endif
     #if CONFIG_JPEG2000_DECODER
         { "jpeg2000dsp", checkasm_check_jpeg2000dsp },
@@ -94,6 +100,9 @@ static const struct {
     #endif
     #if CONFIG_V210_ENCODER
         { "v210enc", checkasm_check_v210enc },
+    #endif
+    #if CONFIG_VP8DSP
+        { "vp8dsp", checkasm_check_vp8dsp },
     #endif
     #if CONFIG_VP9_DECODER
         { "vp9dsp", checkasm_check_vp9dsp },
@@ -208,7 +217,7 @@ int float_near_ulp(float a, float b, unsigned max_ulp)
         return a == b;
     }
 
-    if (abs(x.i - y.i) <= max_ulp)
+    if (llabs((int64_t)x.i - y.i) <= max_ulp)
         return 1;
 
     return 0;

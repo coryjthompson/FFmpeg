@@ -24,8 +24,6 @@
  * JPEG 2000 decoder using libopenjpeg
  */
 
-#define  OPJ_STATIC
-
 #include "libavutil/common.h"
 #include "libavutil/imgutils.h"
 #include "libavutil/intreadwrite.h"
@@ -548,6 +546,8 @@ static int libopenjpeg_decode_frame(AVCodecContext *avctx,
     }
 
     *got_frame = 1;
+    picture->pict_type = AV_PICTURE_TYPE_I;
+    picture->key_frame = 1;
     ret        = buf_size;
 
 done:
